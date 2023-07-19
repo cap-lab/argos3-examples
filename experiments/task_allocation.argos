@@ -1,0 +1,192 @@
+<?xml version="1.0" ?>
+
+<!-- *************************************************** -->
+<!-- * A fully commented XML is diffusion_1.xml. Refer * -->
+<!-- * to it to have full information about what       * -->
+<!-- * these options mean.                             * -->
+<!-- *************************************************** -->
+
+<argos-configuration>
+
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="0" />
+    <experiment length="0"
+                ticks_per_second="10"
+                random_seed="123" />
+  </framework>
+
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers>
+
+    <footbot_task_allocation_controller id="ffc"
+                                 library="build/controllers/footbot_task_allocation/libfootbot_task_allocation">
+      <actuators>
+        <differential_steering implementation="default" />
+        <leds implementation="default" medium="leds" />
+        <range_and_bearing implementation="default"/>
+      </actuators>
+      <sensors>
+        <footbot_proximity implementation="default" show_rays="false" />
+        <footbot_light implementation="rot_z_only" show_rays="false" />
+        <footbot_motor_ground implementation="rot_z_only" />
+        <range_and_bearing implementation="medium" medium="rab"/>
+        <positioning implementation="default" />
+      </sensors>
+      <params>
+        <position grouping_position_x="-2.5"
+            grouping_position_y="2.5" 
+            grouping_range="1.5"/>
+        <diffusion go_straight_angle_range="-5:5"
+                   delta="0.2" />
+        <wheel_turning hard_turn_angle_threshold="90"
+                       soft_turn_angle_threshold="70"
+                       no_turn_angle_threshold="10"
+                       max_speed="50" />
+        <grouping candidate_group_file_name="compile_time/output/group_selection_candidate_info.json" 
+           allocator_type="dta"/>
+        <target_area t_0_x="-2:7"
+                     t_0_y="3.5:7"
+                     t_1_x="-7:-3"
+                     t_1_y="3.75:7"
+                     t_2_x="-7:-3"
+                     t_2_y="-7:1.25"
+                     t_3_x="-2:7"
+                     t_3_y="-7:1.5"/>
+        <nest_area   t_0_x="7:7.5"
+                     t_0_y="7:7.5"
+                     t_1_x="-7.5:-7"
+                     t_1_y="7:7.5"
+                     t_2_x="-7.5:-7"
+                     t_2_y="-7.5:-7"
+                     t_3_x="7:7.5"
+                     t_3_y="-7.5:-7"/>
+        <state />
+      </params>
+    </footbot_task_allocation_controller>
+
+  </controllers>
+
+  <!-- ****************** -->
+  <!-- * Loop functions * -->
+  <!-- ****************** -->
+  <loop_functions library="build/loop_functions/task_allocation_loop_functions/libtask_allocation_loop_functions"
+                  label="task_allocation_loop_functions">
+  <task_allocation food_radius="0.15"
+            trap_radius="0.1"
+            traps="0"
+            output_dir="output" 
+            output_file="dta.csv" />
+    <target_area t_0_x="-2:7"
+                 t_0_y="3.5:7"
+                 t_1_x="-7:-3"
+                 t_1_y="3.75:7"
+                 t_2_x="-7:-3"
+                 t_2_y="-7:1.25"
+                 t_3_x="-2:7"
+                 t_3_y="-7:1.5"/>
+    <nest_area   t_0_x="7:7.5"
+                 t_0_y="7:7.5"
+                 t_1_x="-7.5:-7"
+                 t_1_y="7:7.5"
+                 t_2_x="-7.5:-7"
+                 t_2_y="-7.5:-7"
+                 t_3_x="7:7.5"
+                 t_3_y="-7.5:-7"/>
+    <aisle       x="-7.25:-4.5"
+                 y="1.75:3.25"/>
+    <item t_0="10"
+          t_1="5"
+          t_2="10"
+          t_3="20"/>
+  </loop_functions>
+
+  <!-- *********************** -->
+  <!-- * Arena configuration * -->
+  <!-- *********************** -->
+  <arena size="19, 17, 2" center="-1,0,1">
+
+    <floor id="floor"
+           source="loop_functions"
+           pixels_per_meter="50" />
+
+    <box id="wall_north" size="17,0.1,0.5" movable="false">
+      <body position="-1,7.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_south" size="17,0.1,0.5" movable="false">
+      <body position="-1,-7.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_east" size="0.1,15,0.5" movable="false">
+      <body position="7.5,0,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_west" size="0.1,15,0.5" movable="false">
+      <body position="-9.5,-0,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_left" size="0.1,3,0.5" movable="false">
+      <body position="-2.5,6,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_right" size="0.1,8,0.5" movable="false">
+      <body position="-2.5,-3.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_forward" size="8,0.1,0.5" movable="false">
+      <body position="3.5,2.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_backward1" size="3,0.1,0.5" movable="false">
+      <body position="-6,3.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_backward2" size="3,0.1,0.5" movable="false">
+      <body position="-6,1.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_start_left" size="0.1,4,0.5" movable="false">
+      <body position="-7.5,5.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_start_right" size="0.1,9.5,0.5" movable="false">
+      <body position="-7.5,-3.25,0" orientation="0,0,0" />
+    </box>
+    <distribute>
+      <position method="uniform" min="-9,0,0" max="-8.5,5,0" />
+      <orientation method="uniform" min="0,0,0" max="360,0,0" />
+      <entity quantity="50" max_trials="100">
+        <foot-bot id="fb">
+          <controller config="ffc" />
+        </foot-bot>
+      </entity>
+    </distribute>
+
+ </arena>
+
+  <!-- ********* -->
+  <!-- * Media * -->
+  <!-- ********* -->
+  <media>
+    <range_and_bearing id="rab" />
+    <led id="leds" />
+  </media>
+
+
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <!-- ****************** -->
+  <!-- * Visualization * -->
+  <!-- ****************** -->
+  <visualization>
+     <qt-opengl>
+      <camera>
+        <placements>
+          <placement index="0" position="0,0,4.34" look_at="0,0,0" up="1,0,0" lens_focal_length="6" />
+          <placement index="1" position="-2.5,2.5,4.34" look_at="-2.5,2.5,0" up="1,0,0" lens_focal_length="20" />
+        </placements>
+      </camera>
+      <user_functions label="task_allocation_qt_user_functions" />
+     </qt-opengl>
+  </visualization>
+</argos-configuration>
