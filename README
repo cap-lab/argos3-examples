@@ -100,6 +100,22 @@ http://lancet.mit.edu/ga/ or install it through your system's package
 manager. On Ubuntu type 'sudo apt-get install libga-dev', while on
 HomeBrew type 'brew install brewsci/science/galib'.
 
+TASK ALLOCATION ALGORITHM SIMULATION
+
+This project demonstrates a task allocation algorithm simulation. 
+Foot-bots move towards a grouping area while encountering randomly 
+distributed red circles along the way. The number of red circles is 
+specified in the configuration file, "experiments/task_allocation.argos", 
+under the attribute "traps" of the "task_allocation" section.
+After reaching the grouping area, robots select a group and proceed to 
+the target area. In the target area, they search for food items and 
+deliver them to the nest area.
+To enable task allocation, prepare a candidate group file using the 
+"task_allocation_candidate_selector" repository. The path to this file 
+should be specified in the configuration file.
+The task allocation algorithm can also be configured in the configuration 
+file using the attribute "allocator_type" under the "grouping" section.
+For further information, please contact wecracy@snu.ac.kr.
 
 
 *** COMPILATION ***
@@ -198,6 +214,11 @@ $ argos3 -c experiments/mpga-trial.argos
 
 allows one to test a specific neural network.
 
+The command 
+
+$ argos3 -c experiments/task_allocation.argos
+
+allows one to test a task allocation algorithm simulation.
 
 
 *** WHAT'S NEXT? ***
