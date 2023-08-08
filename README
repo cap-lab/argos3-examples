@@ -109,10 +109,10 @@ specified in the configuration file, "experiments/task_allocation.argos",
 under the attribute "traps" of the "task_allocation" section.
 After reaching the grouping area, robots select a group and proceed to 
 the target area. In the target area, they search for food items and 
-deliver them to the nest area.
-To enable task allocation, prepare a candidate group file using the 
-"task_allocation_candidate_selector" repository. The path to this file 
-should be specified in the configuration file.
+deliver them to the nest area. To enable task allocation, prepare a candidate 
+group file using the "task_allocation_candidate_selector" repository.
+(https://github.com/cap-lab/task_allocation_candidate_selector)
+The path to this file should be specified in the configuration file.
 The task allocation algorithm can also be configured in the configuration 
 file using the attribute "allocator_type" under the "grouping" section.
 For further information, please contact wecracy@snu.ac.kr.
