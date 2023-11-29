@@ -8,7 +8,7 @@ void STA::Init(int robotId, int numOfRobots, int sumOfWorkload, int numOfGroups,
 /****************************************/
 
 int STA::GetGroup(){
-   return (int)m_vsCandidateGroups[0].sGroupId;
+   return (int)m_vsCandidateGroups[0].usGroupId;
 }
 
 /****************************************/
@@ -31,7 +31,7 @@ void STA::Reset() {}
 /****************************************/
 /****************************************/
 
-void STA::ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS){}
+void STA::ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS){}
 
 /****************************************/
 /****************************************/

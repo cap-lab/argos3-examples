@@ -87,6 +87,14 @@ void CTaskAllocationLoopFunctions::Init(TConfigurationNode& t_node) {
       UInt32 unTraps;
       GetNodeAttribute(tTaskAllocation, "traps", unTraps);
 
+      CSpace::TMapPerType& m_cFootbots = GetSpace().GetEntitiesByType("foot-bot");
+      for(CSpace::TMapPerType::iterator it = m_cFootbots.begin(); it != m_cFootbots.end(); ++it) {
+         CFootBotEntity& cFootBot = *any_cast<CFootBotEntity*>(it->second);
+         CFootBotTaskAllocation& cController = dynamic_cast<CFootBotTaskAllocation&>(cFootBot.GetControllableEntity().GetController());
+         cController.SetNumOfGroupFoodItem(vnFoodItems);
+      }
+
+
       Real rSquareRadius;
       GetNodeAttribute(tTaskAllocation, "food_radius", rSquareRadius);
       m_fFoodSquareRadius = rSquareRadius*rSquareRadius;

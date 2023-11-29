@@ -7,18 +7,25 @@ void PSO::Init(int robotId, int numOfRobots, int sumOfWorkload, int numOfGroups,
    m_vsCandidateGroups = candidateGroups;
    m_nSumOfWorkload = sumOfWorkload;
    m_nNumOfGroups = numOfGroups;
-   m_nNumOfRobots = numOfRobots;
+   m_nRobotNum = numOfRobots;
    m_dThreshold = dThreshold;
+   m_nSharedRobotNum = 1;
    m_nIteration = 0;
    std::random_device rd;
    std::mt19937 gen(rd());
    std::uniform_int_distribution<> d(0, numOfGroups - 1);
-   for (int i = 0 ; i < m_nNumOfRobots ; i++) {
+   for (int i = 0 ; i < m_nRobotNum ; i++) {
+      SDecision data;
+      data.usMessageId = TaskAllocation::MESSAGE_ALLOCATION;
+      data.usRobotId = i;
+      data.usSenderId = m_nRobotId;
+      m_vsSharedData.push_back(data);
+
       m_vnCurPosition.push_back(d(gen));
       m_vnCurVelocity.push_back(d(gen));
       m_vnPerBestPosition.push_back(std::vector<unsigned short>());
       m_vnGloBestPosition.push_back(m_vnCurPosition.at(i));
-      for (int j = 0 ; j < m_nNumOfRobots ; j++) {
+      for (int j = 0 ; j < m_nRobotNum ; j++) {
          if (i!=m_nRobotId) {
             m_vnPerBestPosition[i].push_back(-1);
          } else {
@@ -44,7 +51,7 @@ int PSO::GetGroup() {
 /****************************************/
 
 int PSO::GetNeighborNum() {
-   return m_nNumOfRobots;
+   return m_nRobotNum;
 }
 
 /****************************************/
@@ -105,23 +112,24 @@ void PSO::SelectGroup() {
 /****************************************/
 /****************************************/
 
-void PSO::ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS) {
+void PSO::ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS) {
    /* Send Data */
-   if (dataIndex < m_vsSharedData.size()) {
-      SDecision decision;
-      decision.usSenderId = m_nRobotId;
-      decision.usRobotId = dataIndex;
-      decision.usGroupId = m_vnPerBestPosition[m_nRobotId][dataIndex];
-      decision.unUtility = m_nFitness;
-      unsigned char* byteArray = reinterpret_cast<unsigned char*>(&m_vsSharedData.at(dataIndex));
-      CByteArray cSendByteArray = CByteArray(byteArray,sizeof(SDecision));
-      pcRABA->SetData(cSendByteArray);
+   for (int i = 0 ; i < m_nRobotNum ; i++) {
+      m_vsSharedData.at(i).usGroupId = m_vnPerBestPosition[m_nRobotId][i];
    }
+   unsigned char* byteArray = reinterpret_cast<unsigned char*>(m_vsSharedData.data());
+   CByteArray cSendByteArray = CByteArray(byteArray,sizeof(SDecision)*m_nRobotNum);
+   pcRABA->SetData(cSendByteArray);
+
    const CCI_RangeAndBearingSensor::TReadings& tReadings = pcRABS->GetReadings();
    for(auto& tReading : tReadings) {
       CByteArray data = tReading.Data;
       SDecision* receivedData = reinterpret_cast<SDecision*>(data.ToCArray());
-      m_vnPerBestPosition[receivedData->usSenderId][receivedData->usRobotId] = receivedData->usGroupId;
+      if (receivedData->usMessageId != TaskAllocation::MESSAGE_ALLOCATION) continue;
+      for (int i = 0 ; i < m_nRobotNum ; i++) {
+         m_vnPerBestPosition[receivedData->usSenderId][receivedData->usRobotId] = receivedData->usGroupId;
+         receivedData += 1;
+      }
    }
 }
 
@@ -130,13 +138,14 @@ void PSO::ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI
 
 std::vector<double> PSO::GetTaskRatio() {
    std::vector<int> SumOfRobotCap(m_nNumOfGroups, 0);
-   for (auto& data : m_vsSharedData) {
-      SumOfRobotCap.at(data.usGroupId) += 1;
+   for (int i = 0 ; i < m_nSharedRobotNum ; i++) {
+      if (m_vnPerBestPosition[i][i]!= -1)
+         SumOfRobotCap.at(m_vnPerBestPosition[i][i]) += 1;
    }
 
    std::vector<double> TaskRatios;
    for (auto& group : m_vsCandidateGroups) {
-      TaskRatios.push_back(SumOfRobotCap.at(group.sGroupId) / std::ceil((group.nWorkload*1.0)/group.nRequirement));
+      TaskRatios.push_back(SumOfRobotCap.at(group.usGroupId) / std::ceil((group.nWorkload*1.0)/group.nRequirement));
    }
 
    return TaskRatios;

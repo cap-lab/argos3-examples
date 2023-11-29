@@ -127,10 +127,10 @@ void CFootBotTaskAllocation::GroupSelectionInit(TConfigurationNode &g_node) {
       /* Candidate Group List Init */
       for (auto& jCandidateGroup : jCandidateGroups[RobotId]) {
          TaskAllocation::SGroupInfo groupInfo;
-         groupInfo.sGroupId = jCandidateGroup["name"];
+         groupInfo.usGroupId = jCandidateGroup["name"];
          groupInfo.nRequirement = jCandidateGroup["requ"];
          groupInfo.nWorkload = jCandidateGroup["load"];
-         groupInfo.cLedColor = AColorList[groupInfo.sGroupId];
+         groupInfo.cLedColor = AColorList[groupInfo.usGroupId];
          m_vsCandidateGroups.push_back(groupInfo);
       }
    } catch(nlohmann::json::parse_error& e) {
@@ -143,6 +143,7 @@ void CFootBotTaskAllocation::GroupSelectionInit(TConfigurationNode &g_node) {
    m_pcAllocator = TaskAllocation::createAllocator(candidateFileName);
    m_pcAllocator->Init(std::stoi(RobotId), jCandidateGroups["num_of_robots"], jCandidateGroups["workload_sum"], 
          jCandidateGroups["num_of_group"], jCandidateGroups["threshold"], m_vsCandidateGroups);
+   m_nRobotNum = jCandidateGroups["num_of_robots"];
 }
 
 /****************************************/
@@ -151,8 +152,8 @@ void CFootBotTaskAllocation::GroupSelectionInit(TConfigurationNode &g_node) {
 void CFootBotTaskAllocation::TargetAreaInit(TConfigurationNode& t_node) {
    for (auto& candidate : m_vsCandidateGroups) {
       CRange<Real> x, y; 
-      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.sGroupId) + "_x", x);
-      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.sGroupId) + "_y", y);
+      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.usGroupId) + "_x", x);
+      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.usGroupId) + "_y", y);
       m_cTargetAreaX.push_back(x);
       m_cTargetAreaY.push_back(y);
    }
@@ -164,8 +165,8 @@ void CFootBotTaskAllocation::TargetAreaInit(TConfigurationNode& t_node) {
 void CFootBotTaskAllocation::CornerAreaInit(TConfigurationNode& t_node) {
    for (auto& candidate : m_vsCandidateGroups) {
       CRange<Real> x, y; 
-      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.sGroupId) + "_x", x);
-      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.sGroupId) + "_y", y);
+      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.usGroupId) + "_x", x);
+      GetNodeAttribute(t_node, "t_" + std::to_string(candidate.usGroupId) + "_y", y);
       m_cCornerAreaX.push_back(x);
       m_cCornerAreaY.push_back(y);
    }
@@ -220,6 +221,13 @@ void CFootBotTaskAllocation::Init(TConfigurationNode& t_node) {
 /****************************************/
 /****************************************/
 
+void CFootBotTaskAllocation::SetNumOfGroupFoodItem(std::vector<unsigned int> &foodItemNumList) {
+   m_vunGroupTotalFoodItem = foodItemNumList;
+}
+
+/****************************************/
+/****************************************/
+
 void CFootBotTaskAllocation::SetGroupingState() {
    m_sStateData.State = SStateData::STATE_GROUPING;
    m_pcAllocator->Reset();
@@ -243,7 +251,7 @@ void CFootBotTaskAllocation::SetSplitingState() {
    MYLOG << "set spliting" << std::endl;
    m_sStateData.State = SStateData::STATE_SPLITING;
    for (int i = 0 ; i < m_vsCandidateGroups.size() ; i++) {
-      if (m_pcAllocator->GetGroup() == m_vsCandidateGroups.at(i).sGroupId) {
+      if (m_pcAllocator->GetGroup() == m_vsCandidateGroups.at(i).usGroupId) {
          m_cTargetX = m_cTargetAreaX.at(i);
          m_cTargetY = m_cTargetAreaY.at(i);
          m_cCornerX = m_cCornerAreaX.at(i);
@@ -251,6 +259,22 @@ void CFootBotTaskAllocation::SetSplitingState() {
 
       }
    }
+   SFoundCount data;
+   m_vsSharedData.push_back(data);
+   m_vsSharedData.at(0).usGroupId = m_pcAllocator->GetGroup();
+   m_vsSharedData.at(0).usRobotId = m_nRobotId;
+   m_vsSharedData.at(0).usFound = 0;
+   m_vsSharedData.at(0).usMessageId = (unsigned short) TaskAllocation::MESSAGE_FOOD_ITEM;
+   m_nSharedFoodCount = 1;
+   for (int i = 1 ; i < m_nRobotNum ; i++) {
+      SFoundCount data;
+      data.usMessageId = (unsigned short) TaskAllocation::MESSAGE_FOOD_ITEM;
+      data.usGroupId = m_pcAllocator->GetGroup();
+      data.usRobotId = -1;
+      data.usFound = 0;
+      m_vsSharedData.push_back(data);
+   }
+   m_pcRABA->ClearData();
 }
 
 /****************************************/
@@ -276,6 +300,8 @@ void CFootBotTaskAllocation::ControlStep() {
       }
       case SStateData::STATE_EXPLORING: {
          Explore();
+         ShareFoundCount();
+         StopCheck();
          break;
       }
       case SStateData::STATE_RETURN_TO_NEST: {
@@ -284,6 +310,10 @@ void CFootBotTaskAllocation::ControlStep() {
       }
       case SStateData::STATE_FAIL: {
          m_pcWheels->SetLinearVelocity(0,0);
+         break;
+      }
+      case SStateData::STATE_FINISH: {
+         ShareFoundCount();
          break;
       }
       default: {
@@ -525,7 +555,7 @@ void CFootBotTaskAllocation::Moving(const CVector2& target_point) {
 void CFootBotTaskAllocation::SetLedForGroup() {
    auto it = std::find_if(m_vsCandidateGroups.begin(), m_vsCandidateGroups.end(),
          [this](const TaskAllocation::SGroupInfo& structObj) {
-         return structObj.sGroupId == this->m_pcAllocator->GetGroup();
+         return structObj.usGroupId == this->m_pcAllocator->GetGroup();
          });
    if (it != m_vsCandidateGroups.end()) {
       m_pcLEDs->SetAllColors(it->cLedColor);
@@ -539,24 +569,12 @@ void CFootBotTaskAllocation::SetLedForGroup() {
 
 void CFootBotTaskAllocation::Grouping(const CVector2& target_point) {
    MoveToTargetPoint(target_point);
-   if(m_nSharingDataNum==0) {
-      m_pcAllocator->SelectGroup();
-      m_nSharingDataNum = m_pcAllocator->GetNeighborNum();
-   }
-   if(m_nSharingDataNum!=0) {
-      m_pcAllocator->ShareDecisions(m_nSharingDataIndex, m_pcRABA, m_pcRABS);
-      m_nSharingDataIndex++;
-      if (m_nSharingDataIndex >= m_nSharingDataNum) {
-         m_nSharingDataNum = 0;
-         m_nSharingDataIndex = 0;
-      }
-   }
-   if(m_nSharingDataNum==0) {
-      SetLedForGroup();
-      if (m_pcAllocator->StopCheck() == true) {
-         MYLOG << "Group Selection Finish: " << m_pcAllocator->GetGroup() << std::endl;
-         SetWaitingState();
-      }
+   m_pcAllocator->SelectGroup();
+   m_pcAllocator->ShareDecisions(m_pcRABA, m_pcRABS);
+   SetLedForGroup();
+   if (m_pcAllocator->StopCheck() == true) {
+      MYLOG << "Group Selection Finish: " << m_pcAllocator->GetGroup() << std::endl;
+      SetWaitingState();
    }
 }
 
@@ -565,32 +583,22 @@ void CFootBotTaskAllocation::Grouping(const CVector2& target_point) {
 
 void CFootBotTaskAllocation::Waiting(const CVector2& target_point) {
    MoveToTargetPoint(target_point);
-   if (m_nSharingDataNum == 0) {
-      m_nSharingDataNum = m_pcAllocator->GetNeighborNum();
-      m_nSharingDataIndex = 0;
-   }else {
-      m_pcAllocator->ShareDecisions(m_nSharingDataIndex, m_pcRABA, m_pcRABS);
-      m_nSharingDataIndex++;
-      if (m_nSharingDataIndex >= m_nSharingDataNum) {
-         m_nSharingDataNum = 0;
-         m_nSharingDataIndex = 0;
-      }
+   m_pcAllocator->ShareDecisions(m_pcRABA, m_pcRABS);
+   m_nSharingDataIndex++;
+   if (m_pcAllocator->GetNeighborNum() > m_nLastNeighborNum) {
+      SetGroupingState();
+   } else if (m_nWaitingIteration > 5){
+      SetSplitingState();
+      MYLOG << "Waiting Done" << std::endl;
    }
-   if (m_nSharingDataNum==0) {
-      if (m_pcAllocator->GetNeighborNum() > m_nLastNeighborNum) {
-         SetGroupingState();
-      } else if (m_nWaitingIteration > 2){
-         SetSplitingState();
-         MYLOG << "Waiting Done" << std::endl;
-      }
-      m_nWaitingIteration++;
-   }
+   m_nWaitingIteration++;
 }
 
 /****************************************/
 /****************************************/
 
 void CFootBotTaskAllocation::Spliting() {
+   m_pcAllocator->ShareDecisions(m_pcRABA, m_pcRABS);
    CVector2 targetPoint = CVector2(
          m_cGroupingPoint.GetX()+2*(sign(m_cCornerX.GetMin())), 
          m_cGroupingPoint.GetY()+2*(sign(m_cCornerY.GetMin())));
@@ -603,6 +611,56 @@ void CFootBotTaskAllocation::Spliting() {
       MYLOG << "Arrived Target Area" << std::endl;
       m_sStateData.State = SStateData::STATE_EXPLORING;
       m_pcLEDs->SetAllColors(CColor::BLACK);
+   }
+}
+
+/****************************************/
+/****************************************/
+
+void CFootBotTaskAllocation::ShareFoundCount() {
+   unsigned char* byteArray = reinterpret_cast<unsigned char*>(m_vsSharedData.data());
+   CByteArray cSendByteArray = CByteArray(byteArray,sizeof(SFoundCount)*m_nRobotNum);
+   m_pcRABA->SetData(cSendByteArray);
+   const CCI_RangeAndBearingSensor::TReadings& tReadings = m_pcRABS->GetReadings();
+   for(auto& tReading : tReadings) {
+      CByteArray data = tReading.Data;
+      SFoundCount* receivedData = reinterpret_cast<SFoundCount*>(data.ToCArray());
+      if (receivedData->usMessageId != TaskAllocation::MESSAGE_FOOD_ITEM) continue;
+      for (int i = 0 ; i < m_nRobotNum ; i++) {
+         if (receivedData->usRobotId > m_nRobotNum) break;
+         if (receivedData->usGroupId != m_pcAllocator->GetGroup()) {
+            receivedData += 1;
+            continue;
+         }
+         auto existData = std::find_if(m_vsSharedData.begin(), m_vsSharedData.end(),
+                                 [receivedData](SFoundCount& structObj) {
+                                     return structObj.usRobotId == receivedData->usRobotId;
+                                 });
+         if (existData != m_vsSharedData.end()) {
+               if (existData->usFound < receivedData->usFound)
+                  existData->usFound = receivedData->usFound;
+         } else {
+            m_vsSharedData.at(m_nSharedFoodCount).usFound = receivedData->usFound;
+            m_vsSharedData.at(m_nSharedFoodCount).usRobotId = receivedData->usRobotId;
+            m_nSharedFoodCount++;
+         }
+         receivedData += 1;
+      }
+   }
+}
+
+/****************************************/
+/****************************************/
+
+void CFootBotTaskAllocation::StopCheck() {
+   int totalFound = 0;
+   for (SFoundCount& data : m_vsSharedData) {
+      totalFound += data.usFound;
+   }
+   if (totalFound >= m_vunGroupTotalFoodItem.at(m_pcAllocator->GetGroup())){
+      m_sStateData.State = SStateData::STATE_FINISH;
+      m_vsSharedData.at(0).usFound = m_vunGroupTotalFoodItem.at(m_pcAllocator->GetGroup());
+      m_pcWheels->SetLinearVelocity(0,0);
    }
 }
 
@@ -638,6 +696,7 @@ void CFootBotTaskAllocation::GoToNest() {
       m_pcWheels->SetLinearVelocity(0.0f, 0.0f);
       m_pcLEDs->SetAllColors(CColor::BLACK);
       m_sStateData.State = SStateData::STATE_EXPLORING;
+      m_vsSharedData.at(0).usFound++;
       return;
    }
 

@@ -51,6 +51,7 @@ public:
       bool HasFoodItem;      // true when the robot is carrying a food item
       size_t FoodItemIdx;    // the index of the current food item in the array of available food items
       size_t TotalFoodItems; // the total number of food items carried by this robot during the experiment
+      unsigned char NumOfGroupFoodItem;
 
       SFoodData();
       void Reset();
@@ -124,7 +125,8 @@ public:
          STATE_WAITING,
          STATE_SPLITING,
          STATE_EXPLORING,
-         STATE_RETURN_TO_NEST
+         STATE_RETURN_TO_NEST,
+         STATE_FINISH
       } State;
       
       void Init();
@@ -155,6 +157,15 @@ public:
       CColor::BROWN
    };
    
+#pragma pack(push, 2)
+   struct SFoundCount {
+      unsigned short usMessageId;
+      unsigned short usRobotId;
+      unsigned short usFound;
+      unsigned short usGroupId;
+      unsigned short dummy;
+   };
+#pragma pack(pop)
 
 public:
 
@@ -207,6 +218,11 @@ public:
     * Returns the group data
     */
    int GetGroup();
+
+   /*
+    * Set the list of the number of group food items
+    */
+   void SetNumOfGroupFoodItem(std::vector<unsigned int> &foodItemNumList);
 private:
 
    /*
@@ -324,6 +340,14 @@ private:
     * Return whether a robot is in the range
     */
    bool InBound(CRange<Real> x_range, CRange<Real> y_range);
+   /*
+    * Share the number of found food items
+    */
+   void ShareFoundCount();
+   /*
+    * Check all food items of group found
+    */
+   void StopCheck();
 private:
    /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator* m_pcWheels;
@@ -343,6 +367,10 @@ private:
 
    /* The robot id */
    int m_nRobotId;
+   /* The Number Of Total Robot */
+   int m_nRobotNum;
+   /* The Number Of Shared Food Count Information */
+   int m_nSharedFoodCount;
    /* The controller state information */
    SStateData m_sStateData;
    /* The turning parameters */
@@ -374,6 +402,8 @@ private:
    CRange<Real> m_cCornerY;
    std::vector<CRange<Real>> m_cCornerAreaX;
    std::vector<CRange<Real>> m_cCornerAreaY;
+   std::vector<SFoundCount> m_vsSharedData;
+   std::vector<unsigned int> m_vunGroupTotalFoodItem;
 };
 
 #endif /* FOOTBOT_TASK_ALLOCATION_H */

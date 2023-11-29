@@ -16,8 +16,13 @@ using namespace argos;
 
 class TaskAllocation {
 public:
+   enum EMessageId {
+      MESSAGE_ALLOCATION = 1,
+      MESSAGE_FOOD_ITEM,
+   } MessageId;
+
    struct SGroupInfo {
-      short sGroupId;
+      unsigned short usGroupId;
       int nRequirement;
       int nWorkload;
       CColor cLedColor;
@@ -28,12 +33,14 @@ public:
    virtual int GetGroup(){return 0;}
    virtual int GetNeighborNum(){return 0;}
    virtual void SelectGroup(){}
-   virtual void ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS){}
+   virtual void ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS){}
    virtual bool StopCheck(){return false;}
    static TaskAllocation* createAllocator(std::string &type);
    
 protected:
    std::vector<SGroupInfo> m_vsCandidateGroups;
+   int m_nRobotNum;
+   int m_nSharedRobotNum;
    int m_nRobotId;
 };
 #endif /* TASK_ALLOCATION_H */

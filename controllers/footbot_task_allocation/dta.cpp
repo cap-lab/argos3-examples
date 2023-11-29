@@ -7,18 +7,30 @@ void DTA::Init(int robotId, int numOfRobots, int sumOfWorkload, int numOfGroups,
    m_nRobotId = robotId;
    /* Candiate groups */
    m_vsCandidateGroups = candidateGroups;
+   /* Number Of Robots */
+   m_nRobotNum = numOfRobots;
    /* My Group Selection Data Structure Init */
    SDecision data;
    m_vsSharedData.push_back(data);
-   m_vsSharedData.at(0).sGroupId = -1;
-   m_vsSharedData.at(0).unRobotId = robotId;
-   m_vsSharedData.at(0).unCount = 0;
+   m_vsSharedData.at(0).usMessageId = TaskAllocation::MESSAGE_ALLOCATION;
+   m_vsSharedData.at(0).usGroupId = candidateGroups.at(0).usGroupId;
+   m_vsSharedData.at(0).usRobotId = robotId;
+   m_vsSharedData.at(0).usCount = 0;
+   for (int i = 1 ; i < m_nRobotNum ; i++) {
+      SDecision newData;
+      newData.usMessageId = TaskAllocation::MESSAGE_ALLOCATION;
+      newData.usGroupId = -1;
+      newData.usRobotId = -1;
+      newData.usCount = 0;
+      m_vsSharedData.push_back(newData);
+   }
 
    /* Threshold & Sum Of Workload Init */
    m_dThreshold = dThreshold;
    m_nWorkloadSum = sumOfWorkload;
    m_nNumOfGroups = numOfGroups;
    /* Flag Init */
+   m_nSharedRobotNum = 1;
    m_nGroupingIteration = 0;
 }
 
@@ -33,14 +45,14 @@ void DTA::Reset() {
 /****************************************/
 
 int DTA::GetGroup() {
-   return (int) m_vsSharedData.at(0).sGroupId;
+   return (int) m_vsSharedData.at(0).usGroupId;
 }
 
 /****************************************/
 /****************************************/
 
 int DTA::GetNeighborNum() {
-   return m_vsSharedData.size();
+   return m_nSharedRobotNum;
 }
 
 /****************************************/
@@ -48,19 +60,19 @@ int DTA::GetNeighborNum() {
 
 double DTA::GetTaskProb() {
    int NumOfAssignedRobot = 0;
-   for (auto& data : m_vsSharedData) {
-      if (data.sGroupId == m_vsSharedData.at(0).sGroupId) {
+   for (int i = 0 ; i < m_nSharedRobotNum ; i++) {
+      if (m_vsSharedData.at(i).usGroupId == m_vsSharedData.at(0).usGroupId) {
          NumOfAssignedRobot++;
       }
    }
    auto it = std::find_if(m_vsCandidateGroups.begin(), m_vsCandidateGroups.end(),
          [this](const SGroupInfo& structObj) {
-         return structObj.sGroupId == this->m_vsSharedData.at(0).sGroupId;
+         return structObj.usGroupId == this->m_vsSharedData.at(0).usGroupId;
          });
    if (it != m_vsCandidateGroups.end()) {
-      return (m_vsSharedData.size() * it->nWorkload * 1.0) / (m_nWorkloadSum * NumOfAssignedRobot);
+      return (m_nSharedRobotNum * it->nWorkload * 1.0) / (m_nWorkloadSum * NumOfAssignedRobot);
    } else {
-      MYLOGERR << "There's no group id " << m_vsSharedData.at(0).sGroupId << " in candidate groups" << std::endl;
+      MYLOGERR << "There's no group id " << m_vsSharedData.at(0).usGroupId << " in candidate groups" << std::endl;
       return -1;
    }
 }
@@ -72,11 +84,11 @@ void DTA::SelectGroup() {
    m_nGroupingIteration++;
    std::random_device rd;
    std::mt19937 gen(rd());
-   if (m_vsSharedData.at(0).unCount == 0) {
-      m_vsSharedData.at(0).unCount = 1;
+   if (m_vsSharedData.at(0).usCount == 0) {
+      m_vsSharedData.at(0).usCount = 1;
       std::uniform_int_distribution<> d(0, m_vsCandidateGroups.size() - 1);
-      m_vsSharedData.at(0).sGroupId = m_vsCandidateGroups.at(d(gen)).sGroupId;
-      MYLOG << "group: " << m_vsSharedData.at(0).sGroupId << ", count: " << m_vsSharedData.at(0).unCount << std::endl;
+      m_vsSharedData.at(0).usGroupId = m_vsCandidateGroups.at(d(gen)).usGroupId;
+      MYLOG << "group: " << m_vsSharedData.at(0).usGroupId << ", count: " << m_vsSharedData.at(0).usCount << std::endl;
       return;
    }
 
@@ -86,20 +98,20 @@ void DTA::SelectGroup() {
       return;
    }
 
-   if (task_prob < 1.0 && m_vsSharedData.size() > 1) {
+   if (task_prob < 1.0 && m_nSharedRobotNum > 1) {
       std::vector<double> weight_list;
       double other_task_prob = (1.0-task_prob) / (m_vsCandidateGroups.size() - 1);
       for (auto& group : m_vsCandidateGroups) {
-         if (group.sGroupId == m_vsSharedData.at(0).sGroupId) {
+         if (group.usGroupId == m_vsSharedData.at(0).usGroupId) {
             weight_list.push_back(task_prob);
          } else {
             weight_list.push_back(other_task_prob);
          }
       }
       std::discrete_distribution<> d(weight_list.begin(), weight_list.end());
-      m_vsSharedData.at(0).sGroupId = m_vsCandidateGroups.at(d(gen)).sGroupId;
-      m_vsSharedData.at(0).unCount++;
-      MYLOG << "group: " << m_vsSharedData.at(0).sGroupId << ", count: " << m_vsSharedData.at(0).unCount << std::endl;
+      m_vsSharedData.at(0).usGroupId = m_vsCandidateGroups.at(d(gen)).usGroupId;
+      m_vsSharedData.at(0).usCount++;
+      MYLOG << "group: " << m_vsSharedData.at(0).usGroupId << ", count: " << m_vsSharedData.at(0).usCount << std::endl;
 
       return;
    }
@@ -108,40 +120,43 @@ void DTA::SelectGroup() {
 /****************************************/
 /****************************************/
 
-void DTA::ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS) {
+void DTA::ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS) {
    /* Send Data */
-   if (dataIndex < m_vsSharedData.size()) {
-      unsigned char* byteArray = reinterpret_cast<unsigned char*>(&m_vsSharedData.at(dataIndex));
-      CByteArray cSendByteArray = CByteArray(byteArray,sizeof(SDecision));
-      pcRABA->SetData(cSendByteArray);
-   }
+   unsigned char* byteArray = reinterpret_cast<unsigned char*>(m_vsSharedData.data());
+   CByteArray cSendByteArray = CByteArray(byteArray,sizeof(SDecision)*m_nRobotNum);
+   pcRABA->SetData(cSendByteArray);
 
    /* Receive Data */
    const CCI_RangeAndBearingSensor::TReadings& tReadings = pcRABS->GetReadings();
    for(auto& tReading : tReadings) {
       CByteArray data = tReading.Data;
       SDecision* receivedData = reinterpret_cast<SDecision*>(data.ToCArray());
-      if (receivedData->unCount == 0) continue;
-      auto existData = std::find_if(m_vsSharedData.begin(), m_vsSharedData.end(),
-                              [receivedData](SDecision& structObj) {
-                                  return structObj.unRobotId == receivedData->unRobotId;
-                              });
-      if (existData != m_vsSharedData.end()) {
-         if (existData->unCount < receivedData->unCount) {
-            existData->unCount = receivedData->unCount;
-            existData->sGroupId = receivedData->sGroupId;
+      if (receivedData->usMessageId != TaskAllocation::MESSAGE_ALLOCATION) continue;
+      for (int i = 0 ; i < m_nRobotNum ; i++) {
+         if (receivedData->usRobotId > m_nRobotNum) break;
+         if (receivedData->usCount == 0) {
+            receivedData += 1;
+            continue;
          }
-      } else {
-         SDecision newData;
-         newData.unCount = receivedData->unCount;
-         newData.sGroupId = receivedData->sGroupId;
-         newData.unRobotId = receivedData->unRobotId;
-         m_vsSharedData.push_back(newData);
-         m_nGroupingIteration = 0;
+         auto existData = std::find_if(m_vsSharedData.begin(), m_vsSharedData.end(),
+                                 [receivedData](SDecision& structObj) {
+                                     return structObj.usRobotId == receivedData->usRobotId;
+                                 });
+         if (existData != m_vsSharedData.end()) {
+            if (existData->usCount < receivedData->usCount) {
+               existData->usCount = receivedData->usCount;
+               existData->usGroupId = receivedData->usGroupId;
+            }
+         } else {
+            m_vsSharedData.at(m_nSharedRobotNum).usCount = receivedData->usCount;
+            m_vsSharedData.at(m_nSharedRobotNum).usGroupId = receivedData->usGroupId;
+            m_vsSharedData.at(m_nSharedRobotNum).usRobotId = receivedData->usRobotId;
+            m_nSharedRobotNum++;
+            m_nGroupingIteration = 0;
+         }
+         receivedData += 1;
       }
    }
-
-  
 }
 
 /****************************************/
@@ -149,13 +164,13 @@ void DTA::ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI
 
 std::vector<double> DTA::GetTaskRatio() {
    std::vector<int> SumOfRobotCap(m_nNumOfGroups, 0);
-   for (auto& data : m_vsSharedData) {
-      SumOfRobotCap.at(data.sGroupId) += 1;
+   for (int i = 0 ; i < m_nSharedRobotNum ; i++) {
+      SumOfRobotCap.at(m_vsSharedData.at(i).usGroupId) += 1;
    }
 
    std::vector<double> TaskRatios;
    for (auto& group : m_vsCandidateGroups) {
-      TaskRatios.push_back(SumOfRobotCap.at(group.sGroupId) / std::ceil((group.nWorkload*1.0)/group.nRequirement));
+      TaskRatios.push_back(SumOfRobotCap.at(group.usGroupId) / std::ceil((group.nWorkload*1.0)/ group.nRequirement));
    }
 
    return TaskRatios;
@@ -165,8 +180,7 @@ std::vector<double> DTA::GetTaskRatio() {
 /****************************************/
 
 double DTA::GetStopProb() {
-   int desiredIter = 25;
-   return m_nGroupingIteration > desiredIter ? 1 : 0;
+   return m_nGroupingIteration>50 ? 1 : 0;
 }
 
 /****************************************/
@@ -189,15 +203,16 @@ bool DTA::StopCheck() {
       if (isGroupingDone == false) break;
    }
    if (isGroupingDone == true) return true;
-   std::random_device rd;
-   std::mt19937 gen(rd());
-   std::vector<double> weight_list;
-   double stopProb = GetStopProb();
-   weight_list.push_back(1-stopProb);
-   weight_list.push_back(stopProb);
-   std::discrete_distribution<> d(weight_list.begin(), weight_list.end());
-   int random_index = d(gen);
-   if (random_index == 1) {
+   //std::random_device rd;
+   //std::mt19937 gen(rd());
+   //std::vector<double> weight_list;
+   //double stopProb = GetStopProb();
+   //weight_list.push_back(1-stopProb);
+   //weight_list.push_back(stopProb);
+   //std::discrete_distribution<> d(weight_list.begin(), weight_list.end());
+   //int random_index = d(gen);
+   //if (random_index == 1) {
+   if(m_nGroupingIteration > 15){
       isGroupingDone = true;
    }
    return isGroupingDone;

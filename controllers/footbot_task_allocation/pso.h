@@ -10,14 +10,15 @@ public:
    int GetNeighborNum();
    double GetFitness(std::vector<unsigned short> &robot_assigned);
    void SelectGroup();
-   void ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
+   void ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
    bool StopCheck();
 #pragma pack(push, 2)
    struct SDecision {
+      unsigned short usMessageId;
       unsigned short usSenderId;
       unsigned short usRobotId;
       unsigned short usGroupId;
-      unsigned int unUtility;
+      unsigned short usUtility;
    };
 #pragma pack(pop)
 private:
@@ -30,7 +31,6 @@ private:
    std::vector<unsigned short> m_vnGloBestPosition;
    std::vector<SDecision> m_vsSharedData;
    int m_nFitness;
-   int m_nNumOfRobots;
    int m_nNumOfGroups;
    int m_nSumOfWorkload;
    int m_nIteration;

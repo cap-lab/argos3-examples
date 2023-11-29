@@ -12,13 +12,15 @@ public:
    int GetGroup();
    int GetNeighborNum();
    void SelectGroup();
-   void ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
+   void ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
    bool StopCheck();
 #pragma pack(push, 2)
    struct SDecision {
-      unsigned int unRobotId;
-      unsigned int unCount;
-      short sGroupId;
+      unsigned short usMessageId;
+      unsigned short usRobotId;
+      unsigned short usCount;
+      unsigned short usGroupId;
+      unsigned short dummy;
    };
 #pragma pack(pop)
 private:

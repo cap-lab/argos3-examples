@@ -12,7 +12,7 @@ public:
    int GetGroup();
    int GetNeighborNum();
    void SelectGroup();
-   void ShareDecisions(int dataIndex, CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
+   void ShareDecisions(CCI_RangeAndBearingActuator* pcRABA, CCI_RangeAndBearingSensor* pcRABS);
    bool StopCheck();
 private:
 };
