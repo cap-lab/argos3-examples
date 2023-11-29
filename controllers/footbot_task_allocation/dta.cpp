@@ -165,8 +165,8 @@ std::vector<double> DTA::GetTaskRatio() {
 /****************************************/
 
 double DTA::GetStopProb() {
-   int desiredIter = std::log(m_vsCandidateGroups.size()) * 20;
-   return 1/(1+std::exp(- m_nGroupingIteration + desiredIter));
+   int desiredIter = 25;
+   return m_nGroupingIteration > desiredIter ? 1 : 0;
 }
 
 /****************************************/
