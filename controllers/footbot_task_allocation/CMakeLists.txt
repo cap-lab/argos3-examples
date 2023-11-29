@@ -1,10 +1,12 @@
 add_library(footbot_task_allocation SHARED 
-   task_allocation.h task_allocation.cpp 
+   task_allocation.h task_allocation.cpp
    footbot_task_allocation.h footbot_task_allocation.cpp 
    dta.h dta.cpp 
    hedonic_game.h hedonic_game.cpp 
    pso.h pso.cpp
-   sta.h sta.cpp)
+   sta.h sta.cpp
+   aladdin.h aladdin.cpp
+   gcaa.h gcaa.cpp)
 
 list(APPEND CMAKE_PREFIX_PATH "~/tools/anaconda/anaconda3")
 
