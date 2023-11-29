@@ -151,7 +151,7 @@
       <position method="uniform" min="-9,0,0" max="-8.5,5,0" />
       <orientation method="uniform" min="0,0,0" max="360,0,0" />
       <entity quantity="50" max_trials="100">
-        <foot-bot id="fb" rab_range="4">
+        <foot-bot id="fb" rab_range="3" rab_data_size="500">
           <controller config="ffc" />
         </foot-bot>
       </entity>
@@ -183,7 +183,7 @@
       <camera>
         <placements>
           <placement index="0" position="0,0,4.34" look_at="0,0,0" up="1,0,0" lens_focal_length="6" />
-          <placement index="1" position="-2.5,2.5,4.34" look_at="-2.5,2.5,0" up="1,0,0" lens_focal_length="20" />
+          <placement index="1" position="-7,2.5,4.34" look_at="-2.5,2.5,0" up="1,0,0" lens_focal_length="30" />
         </placements>
       </camera>
       <user_functions label="task_allocation_qt_user_functions" />
